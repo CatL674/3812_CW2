@@ -31,7 +31,54 @@ namespace
 // Implement in Task 1.3
 void draw_triangle_interp( Surface& aSurface, Vec2f aP0, Vec2f aP1, Vec2f aP2, ColorF aC0, ColorF aC1, ColorF aC2 )
 {
-	// TODO: your implementation goes here
+	// Evaluate barycentric coordinates at pixel centers and visit only the
+	// triangle's clipped integer bounding box.
+	float const denominator = (aP1.y - aP2.y) * (aP0.x - aP2.x)
+		+ (aP2.x - aP1.x) * (aP0.y - aP2.y);
+	if( std::abs(denominator) <= 1e-8f )
+		return;
+
+	//Only check the screen area where the triangle is located
+	float const minX = std::min({ aP0.x, aP1.x, aP2.x });
+	float const maxX = std::max({ aP0.x, aP1.x, aP2.x });
+	float const minY = std::min({ aP0.y, aP1.y, aP2.y });
+	float const maxY = std::max({ aP0.y, aP1.y, aP2.y });
+
+	int const xBegin = std::max( 0, int(std::floor(minX)) );
+	int const yBegin = std::max( 0, int(std::floor(minY)) );
+	int const xEnd = std::min( int(aSurface.get_width()), int(std::ceil(maxX)) );
+	int const yEnd = std::min( int(aSurface.get_height()), int(std::ceil(maxY)) );
+	if( xBegin >= xEnd || yBegin >= yEnd )
+		return;
+
+	float const invDenominator = 1.f / denominator;
+	for( int y = yBegin; y < yEnd; ++y )
+	{
+		for( int x = xBegin; x < xEnd; ++x )
+		{
+			//Calculate the color using the position of the pixel center
+			float const px = float(x) + 0.5f;
+			float const py = float(y) + 0.5f;
+
+			float const w0 = ((aP1.y - aP2.y) * (px - aP2.x)
+				+ (aP2.x - aP1.x) * (py - aP2.y)) * invDenominator;
+			float const w1 = ((aP2.y - aP0.y) * (px - aP2.x)
+				+ (aP0.x - aP2.x) * (py - aP2.y)) * invDenominator;
+			float const w2 = 1.f - w0 - w1;
+
+			//Pixels outside the triangle are skipped
+			if( w0 < 0.f || w1 < 0.f || w2 < 0.f )
+				continue;
+
+			//First blend the colors, then convert them to colors for screen use
+			ColorF const color{
+				w0 * aC0.r + w1 * aC1.r + w2 * aC2.r,
+				w0 * aC0.g + w1 * aC1.g + w2 * aC2.g,
+				w0 * aC0.b + w1 * aC1.b + w2 * aC2.b
+			};
+			aSurface.set_pixel_srgb( Surface::Index(x), Surface::Index(y), linear_to_srgb(color) );
+		}
+	}
 }
 
 // Implement in Task 2.3
@@ -49,7 +96,7 @@ bool clip_line( Rect2F const& aTargetArea, Vec2f& aBegin, Vec2f& aEnd )
 	// passed in through them.
 	//
 	// Return true to indicate that the line should be drawn and false that
-	// it should be discarded.
+	// the line should be discarded.
 
 	// See https://en.wikipedia.org/wiki/Cohen%E2%80%93Sutherland_algorithm
 	auto b = classify_( aTargetArea, aBegin );
@@ -154,5 +201,6 @@ void draw_rectangle_outline( Surface& aSurface, Vec2f aMinCorner, Vec2f aMaxCorn
 {
 	// TODO: (Exercise G.1) your implementation goes here. Can ignore for CW2.
 }
+
 
 

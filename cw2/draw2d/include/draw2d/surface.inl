@@ -16,7 +16,12 @@ void Surface::set_pixel_srgb( Index aX, Index aY, ColorU8_sRGB const& aColor )
 {
 	assert( aX < mWidth && aY < mHeight ); // IMPORTANT! This line must remain the first line in this function!
 
-	// TODO: your implementation goes here
+	//Each pixel occupies four bytes, with red, green, and blue values ​​written in sequence
+	Index const index = get_linear_index( aX, aY ) * 4;
+	mSurface[index + 0] = aColor.r;
+	mSurface[index + 1] = aColor.g;
+	mSurface[index + 2] = aColor.b;
+	mSurface[index + 3] = 0;
 }
 
 inline 
@@ -39,7 +44,8 @@ Rect2F Surface::clip_area() const noexcept
 inline
 auto Surface::get_linear_index( Index aX, Index aY ) const noexcept -> Index
 {
-	return 0; // TODO: remove this line when you implement this function.
+	//First locate this row, then add the horizontal coordinate
+	return aY * mWidth + aX;
 }
 
 
@@ -48,7 +54,6 @@ ColorU8_sRGB Surface::get_pixel_srgb( Index aX, Index aY ) const noexcept
 {
 	assert( aX < mWidth && aY < mHeight ); // IMPORTANT! This line must remain the first line in this function!
 
-	return {0, 0, 0}; // TODO: remove this line when you implement this function.
+	Index const index = get_linear_index( aX, aY ) * 4;
+	return { mSurface[index + 0], mSurface[index + 1], mSurface[index + 2] };
 }
-
-

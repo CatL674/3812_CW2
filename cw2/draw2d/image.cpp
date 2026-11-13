@@ -51,7 +51,36 @@ std::unique_ptr<ImageRGBA> load_image( char const* aPath )
 // Task 1.4
 void blit_masked( Surface& aSurface, ImageRGBA const& aImage, Vec2f aPosition )
 {
-	// TODO: your implementation goes here
+		ImageRGBA::Index const width = aImage.get_width();
+	ImageRGBA::Index const height = aImage.get_height();
+	//The input coordinates represent the center of the image, they are converted to the bottom-left corner
+	int const x0 = int( std::lround( aPosition.x - 0.5f * float(width) ) );
+	int const y0 = int( std::lround( aPosition.y - 0.5f * float(height) ) );
+
+	for( ImageRGBA::Index sy = 0; sy < height; ++sy )
+	{
+		for( ImageRGBA::Index sx = 0; sx < width; ++sx )
+		{
+			int const dx = x0 + int(sx);
+			int const dy = y0 + int(sy);
+			//Pixels outside the screen are skipped
+			if( dx < 0 || dy < 0
+				|| dx >= int(aSurface.get_width())
+				|| dy >= int(aSurface.get_height()) )
+				continue;
+
+			ColorU8_sRGB_Alpha const color = aImage.get_pixel( sx, sy );
+			//Pixels with a transparency of less than half are not drawn
+			if( color.a < 128 )
+				continue;
+
+			aSurface.set_pixel_srgb(
+				Surface::Index(dx),
+				Surface::Index(dy),
+				ColorU8_sRGB{ color.r, color.g, color.b }
+			);
+		}
+	}
 }
 
 // Task 2.1
