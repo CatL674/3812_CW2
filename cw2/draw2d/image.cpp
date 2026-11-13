@@ -1,6 +1,8 @@
 #include <draw2d/image.hpp>
 
 #include <memory>
+#include <cmath>
+#include <cstdint>
 #include <algorithm>
 
 #include <cstdio>
@@ -51,36 +53,37 @@ std::unique_ptr<ImageRGBA> load_image( char const* aPath )
 // Task 1.4
 void blit_masked( Surface& aSurface, ImageRGBA const& aImage, Vec2f aPosition )
 {
-		ImageRGBA::Index const width = aImage.get_width();
-	ImageRGBA::Index const height = aImage.get_height();
-	//The input coordinates represent the center of the image, they are converted to the bottom-left corner
-	int const x0 = int( std::lround( aPosition.x - 0.5f * float(width) ) );
-	int const y0 = int( std::lround( aPosition.y - 0.5f * float(height) ) );
+    using Coord = std::int64_t;
+    Coord const width = Coord(aImage.get_width());
+    Coord const height = Coord(aImage.get_height());
 
-	for( ImageRGBA::Index sy = 0; sy < height; ++sy )
-	{
-		for( ImageRGBA::Index sx = 0; sx < width; ++sx )
-		{
-			int const dx = x0 + int(sx);
-			int const dy = y0 + int(sy);
-			//Pixels outside the screen are skipped
-			if( dx < 0 || dy < 0
-				|| dx >= int(aSurface.get_width())
-				|| dy >= int(aSurface.get_height()) )
-				continue;
+    //Convert the image center to its bottom-left corner
+    Coord const x0 = std::lround(aPosition.x - 0.5f * float(width));
+    Coord const y0 = std::lround(aPosition.y - 0.5f * float(height));
 
-			ColorU8_sRGB_Alpha const color = aImage.get_pixel( sx, sy );
-			//Pixels with a transparency of less than half are not drawn
-			if( color.a < 128 )
-				continue;
+    //Clip once, so large images only visit visible pixels
+    Coord const sxBegin = std::max(Coord(0), -x0);
+    Coord const syBegin = std::max(Coord(0), -y0);
+    Coord const sxEnd = std::min(width, Coord(aSurface.get_width()) - x0);
+    Coord const syEnd = std::min(height, Coord(aSurface.get_height()) - y0);
+    if (sxBegin >= sxEnd || syBegin >= syEnd)
+        return;
 
-			aSurface.set_pixel_srgb(
-				Surface::Index(dx),
-				Surface::Index(dy),
-				ColorU8_sRGB{ color.r, color.g, color.b }
-			);
-		}
-	}
+    for (Coord sy = syBegin; sy < syEnd; ++sy)
+    {
+        for (Coord sx = sxBegin; sx < sxEnd; ++sx)
+        {
+            auto const color = aImage.get_pixel(
+                ImageRGBA::Index(sx), ImageRGBA::Index(sy));
+            //Keep the background when alpha is below 128
+            if (color.a < 128)
+                continue;
+
+            aSurface.set_pixel_srgb(
+                Surface::Index(x0 + sx), Surface::Index(y0 + sy),
+                ColorU8_sRGB{color.r, color.g, color.b});
+        }
+    }
 }
 
 // Task 2.1
